@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap');
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --accent: #d97706;
+  --success: #059669;
+  --error: #dc2626;
+  --muted: #64748b;
+  --border: rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.minimal-game {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.8s ease-out;
+  padding-bottom: 5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 1.25rem;
+}
+
+.player-details-clues {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.player-details-clues span {
+  font-size: 0.65rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(217, 119, 6, 0.03);
+}
+
+.teams-wrapper {
+  width: 100%;
+  margin-bottom: 3rem;
+  display: flex; flex-direction: column;
+  gap: 1.25rem;
+}
+
+.team-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.team-row:hover {
+  border-bottom-color: var(--accent);
+}
+
+.team-name {
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--foreground);
+  max-width: 65%;
+  line-height: 1.3;
+}
+
+.team-years {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+form {
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+}
+
+input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  padding: 0.75rem 0;
+  color: var(--foreground);
+  font-size: 1.5rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.4s ease;
+  text-align: center;
+}
+
+input:focus {
+  border-bottom-color: var(--accent);
+}
+
+input::placeholder {
+  color: rgba(15, 23, 42, 0.1);
+}
+
+.result {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  text-align: center;
+}
+
+.result.success { color: var(--success); }
+.result.error { color: var(--error); }
+
+.stats-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 1.5rem;
+  background: linear-gradient(transparent, var(--background) 40%);
+}
+
+.stats-footer span {
+  color: rgba(15, 23, 42, 0.4);
+  margin-right: 0.4rem;
+}
+
+.reveal-link {
+  margin-top: 2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.reveal-link:hover {
+  opacity: 1;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.loading-container h1 {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Tablet & Desktop sizing */
+@media (min-width: 768px) {
+  main { padding: 4rem 2rem; }
+  h1 { font-size: 1.25rem; margin-bottom: 1.5rem; }
+  .team-name { font-size: 1.5rem; }
+  .team-years { font-size: 0.9rem; }
+  input { font-size: 2rem; padding: 1rem 0; }
+  .stats-footer { position: fixed; bottom: 2rem; background: none; }
+  .player-details-clues span { font-size: 0.7rem; padding: 0.2rem 0.6rem; }
+}
