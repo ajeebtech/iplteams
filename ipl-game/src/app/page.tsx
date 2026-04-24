@@ -48,9 +48,9 @@ export default function Home() {
   const [gameStarted, setGameStarted] = useState(false);
   const [guess, setGuess] = useState("");
   const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [score, setScore] = useState(0);
   const [attempts, setAttempts] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [seenPlayers, setSeenPlayers] = useState<Set<string>>(new Set());
 
   const startGame = (easy: boolean) => {
     setIsEasyMode(easy);
@@ -80,14 +80,24 @@ export default function Home() {
   const pickRandomPlayer = useCallback(() => {
     if (!playersData || playersData.length === 0) return;
 
-    const pool = [...playersData];
+    // Filter out players already seen in this session
+    let pool = playersData.filter(p => !seenPlayers.has(p._id));
+    
+    // If all players seen, reset the set
+    if (pool.length === 0) {
+      setSeenPlayers(new Set());
+      pool = [...playersData];
+    }
+
     pool.sort((a, b) => b.teams.length - a.teams.length);
 
     const topPoolSize = Math.max(10, Math.floor(pool.length * 0.2));
-    const randomIndex = Math.floor(Math.random() * topPoolSize);
+    const randomIndex = Math.floor(Math.random() * Math.min(topPoolSize, pool.length));
     
     const picked = pool[randomIndex];
     setCurrentPlayer(picked);
+    setSeenPlayers(prev => new Set(prev).add(picked._id));
+    
     setGuess("");
     setResult(null);
     setRevealed(false);
@@ -95,7 +105,7 @@ export default function Home() {
     if (isEasyMode) {
       generateOptions(picked, playersData);
     }
-  }, [playersData, isEasyMode, generateOptions]);
+  }, [playersData, isEasyMode, generateOptions, seenPlayers]);
 
   useEffect(() => {
     if (playersData && !currentPlayer) {
@@ -115,7 +125,6 @@ export default function Home() {
 
     if (selectedName.trim().toLowerCase() === currentPlayer.name.toLowerCase()) {
       setResult({ type: "success", message: `CORRECT: ${currentPlayer.name}` });
-      setScore((s) => s + 1);
       setAttempts((a) => a + 1);
       setTimeout(pickRandomPlayer, 2000);
     } else {
@@ -265,7 +274,6 @@ export default function Home() {
       </div>
 
       <div className="stats-footer">
-        <div><span>Score</span> {score}</div>
         <div><span>Streak</span> {attempts}</div>
       </div>
     </div>
