@@ -43,27 +43,59 @@ const TEAM_LOGOS: Record<string, string> = {
 export default function Home() {
   const playersData = useQuery(api.players.getPlayers, { minTeams: 2 });
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
+  const [options, setOptions] = useState<string[]>([]);
+  const [isEasyMode, setIsEasyMode] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
   const [guess, setGuess] = useState("");
   const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [score, setScore] = useState(0);
   const [attempts, setAttempts] = useState(0);
   const [revealed, setRevealed] = useState(false);
 
+  const startGame = (easy: boolean) => {
+    setIsEasyMode(easy);
+    setGameStarted(true);
+  };
+
+  const generateOptions = useCallback((correctPlayer: Player, allPlayers: Player[]) => {
+    // Find players with similar roles
+    const similar = allPlayers.filter(p => 
+      p.name !== correctPlayer.name && 
+      p.role === correctPlayer.role && 
+      p.batting === correctPlayer.batting && 
+      p.bowling === correctPlayer.bowling
+    );
+
+    // If not enough similar, just pick random ones
+    let distractors = [...similar].sort(() => 0.5 - Math.random()).slice(0, 3);
+    if (distractors.length < 3) {
+      const remaining = allPlayers.filter(p => p.name !== correctPlayer.name && !distractors.find(d => d.name === p.name));
+      distractors = [...distractors, ...remaining.sort(() => 0.5 - Math.random()).slice(0, 3 - distractors.length)];
+    }
+
+    const newOptions = [correctPlayer.name, ...distractors.map(p => p.name)].sort();
+    setOptions(newOptions);
+  }, []);
+
   const pickRandomPlayer = useCallback(() => {
     if (!playersData || playersData.length === 0) return;
 
-    // The data from Convex is already filtered by minTeams: 2 and sorted or we can sort here
     const pool = [...playersData];
     pool.sort((a, b) => b.teams.length - a.teams.length);
 
     const topPoolSize = Math.max(10, Math.floor(pool.length * 0.2));
     const randomIndex = Math.floor(Math.random() * topPoolSize);
-
-    setCurrentPlayer(pool[randomIndex]);
+    
+    const picked = pool[randomIndex];
+    setCurrentPlayer(picked);
     setGuess("");
     setResult(null);
     setRevealed(false);
-  }, [playersData]);
+    
+    if (isEasyMode) {
+      generateOptions(picked, playersData);
+    }
+  }, [playersData, isEasyMode, generateOptions]);
 
   useEffect(() => {
     if (playersData && !currentPlayer) {
@@ -71,19 +103,30 @@ export default function Home() {
     }
   }, [playersData, currentPlayer, pickRandomPlayer]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // When switching to easy mode, generate options for current player
+  useEffect(() => {
+    if (isEasyMode && currentPlayer && playersData) {
+      generateOptions(currentPlayer, playersData);
+    }
+  }, [isEasyMode, currentPlayer, playersData, generateOptions]);
+
+  const handleGuess = (selectedName: string) => {
     if (!currentPlayer || revealed) return;
 
-    if (guess.trim().toLowerCase() === currentPlayer.name.toLowerCase()) {
+    if (selectedName.trim().toLowerCase() === currentPlayer.name.toLowerCase()) {
       setResult({ type: "success", message: `CORRECT: ${currentPlayer.name}` });
       setScore((s) => s + 1);
       setAttempts((a) => a + 1);
       setTimeout(pickRandomPlayer, 2000);
     } else {
       setResult({ type: "error", message: "TRY AGAIN" });
-      setAttempts(0); // Reset streak on wrong answer
+      setAttempts(0);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleGuess(guess);
   };
 
   const handleReveal = () => {
@@ -99,6 +142,34 @@ export default function Home() {
 
   return (
     <main>
+      {!gameStarted && (
+        <div className="startup-overlay">
+          <div className="startup-modal">
+            <h1>Select Difficulty</h1>
+            <div className="startup-options">
+              <button onClick={() => startGame(false)} className="hard-btn">
+                HARD MODE
+                <small>Type the name</small>
+              </button>
+              <button onClick={() => startGame(true)} className="easy-btn">
+                EASY MODE
+                <small>4 Options</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`game-content ${!gameStarted ? "blurred" : ""}`}>
+        <div className="mode-toggle">
+          <button 
+            className={isEasyMode ? "active" : ""} 
+            onClick={() => setIsEasyMode(!isEasyMode)}
+          >
+            {isEasyMode ? "EASY MODE" : "HARD MODE"}
+          </button>
+        </div>
+
       <div className="minimal-game">
         <header>
           <h1>Guess the Player</h1>
@@ -153,16 +224,30 @@ export default function Home() {
           })}
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Type name..."
-            value={guess}
-            onChange={(e) => setGuess(e.target.value)}
-            autoFocus
-            autoComplete="off"
-          />
-        </form>
+        {isEasyMode ? (
+          <div className="options-grid">
+            {options.map((name) => (
+              <button 
+                key={name} 
+                onClick={() => handleGuess(name)}
+                disabled={revealed || result?.type === "success"}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Type name..."
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              autoFocus
+              autoComplete="off"
+            />
+          </form>
+        )}
 
         {result && (
           <div className={`result ${result.type}`}>
@@ -181,6 +266,7 @@ export default function Home() {
         <div><span>Score</span> {score}</div>
         <div><span>Streak</span> {attempts}</div>
       </div>
-    </main>
-  );
+    </div>
+  </main>
+);
 }

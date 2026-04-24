@@ -25,6 +25,7 @@ body {
 }
 
 main {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -40,13 +41,6 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: fadeIn 0.8s ease-out;
-  overflow: hidden; /* Ensure its children handle overflow */
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 header {
@@ -150,6 +144,62 @@ h1 {
   white-space: nowrap;
 }
 
+.mode-toggle {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
+}
+
+.mode-toggle button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.65rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+}
+
+.mode-toggle button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+  max-width: 500px;
+}
+
+.options-grid button {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 8px;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.options-grid button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(217, 119, 6, 0.02);
+}
+
+.options-grid button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 form {
   width: 100%;
   max-width: 500px;
@@ -230,14 +280,100 @@ input::placeholder {
   gap: 1rem;
 }
 
-.loading-container h1 {
-  animation: pulse 1.5s infinite ease-in-out;
+.game-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+.game-content.blurred {
+  filter: blur(8px);
+  pointer-events: none;
 }
+
+.startup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.startup-modal {
+  background: white;
+  padding: 3rem;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+  text-align: center;
+  max-width: 450px;
+  width: 90%;
+}
+
+.startup-modal h1 {
+  font-size: 1.5rem;
+  color: var(--foreground);
+  margin-bottom: 2.5rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.startup-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.startup-options button {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.startup-options button small {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.startup-options button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
+  border-color: var(--accent);
+}
+
+.startup-options button.hard-btn:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.startup-options button.easy-btn {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.startup-options button.easy-btn small {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 
 /* Tablet & Desktop sizing */
 @media (min-width: 768px) {
