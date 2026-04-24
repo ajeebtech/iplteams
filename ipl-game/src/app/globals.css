@@ -20,6 +20,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Outfit', sans-serif;
+}
+
+body.no-scroll {
   overflow: hidden;
   height: 100vh;
 }
@@ -29,10 +32,15 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   padding: 1.5rem;
   max-width: 800px;
   margin: 0 auto;
+}
+
+main.no-scroll {
+  height: 100vh;
+  overflow: hidden;
 }
 
 .minimal-game {
@@ -77,31 +85,10 @@ h1 {
 
 .teams-wrapper {
   width: 100%;
-  flex: 1;
-  overflow-y: auto;
   margin-bottom: 2rem;
   display: flex; 
   flex-direction: column;
   gap: 1.25rem;
-  padding-right: 0.5rem; /* Space for scrollbar */
-}
-
-/* Custom Scrollbar */
-.teams-wrapper::-webkit-scrollbar {
-  width: 4px;
-}
-
-.teams-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.teams-wrapper::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
-}
-
-.teams-wrapper::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
 }
 
 .team-row {

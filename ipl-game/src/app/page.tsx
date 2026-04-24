@@ -141,7 +141,7 @@ export default function Home() {
   if (!currentPlayer) return <main><div className="loading-container"><h1>INITIALIZING GAME...</h1></div></main>;
 
   return (
-    <main>
+    <main className={!gameStarted ? "no-scroll" : ""}>
       {!gameStarted && (
         <div className="startup-overlay">
           <div className="startup-modal">
@@ -161,14 +161,16 @@ export default function Home() {
       )}
 
       <div className={`game-content ${!gameStarted ? "blurred" : ""}`}>
-        <div className="mode-toggle">
-          <button 
-            className={isEasyMode ? "active" : ""} 
-            onClick={() => setIsEasyMode(!isEasyMode)}
-          >
-            {isEasyMode ? "EASY MODE" : "HARD MODE"}
-          </button>
-        </div>
+        {!gameStarted && (
+          <div className="mode-toggle">
+            <button 
+              className={isEasyMode ? "active" : ""} 
+              onClick={() => setIsEasyMode(!isEasyMode)}
+            >
+              {isEasyMode ? "EASY MODE" : "HARD MODE"}
+            </button>
+          </div>
+        )}
 
       <div className="minimal-game">
         <header>
