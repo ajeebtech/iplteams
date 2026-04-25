@@ -67,6 +67,7 @@ export default function Home() {
   const [revealed, setRevealed] = useState(false);
   const [seenPlayers, setSeenPlayers] = useState<Set<string>>(new Set());
   const [teammateClues, setTeammateClues] = useState<string[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     let id = sessionStorage.getItem("player_id");
@@ -258,7 +259,7 @@ export default function Home() {
   }, [gameMode, currentPlayer, playersData, generateOptions, generateTeammateClues]);
 
   const handleGuess = (selectedName: string) => {
-    if (!currentPlayer || revealed) return;
+    if (!currentPlayer || revealed || isLocked) return;
 
     if (selectedName.trim().toLowerCase() === currentPlayer?.name.toLowerCase()) {
       setResult({ type: "success", message: `CORRECT: ${currentPlayer?.name}` });
@@ -273,7 +274,16 @@ export default function Home() {
       }
     } else {
       setResult({ type: "error", message: "TRY AGAIN" });
-      if (gameMode !== "battle") setAttempts(0);
+      if (gameMode === "battle") {
+        setIsLocked(true);
+        setResult({ type: "error", message: "WRONG! 2s PENALTY" });
+        setTimeout(() => {
+          setIsLocked(false);
+          setResult(null);
+        }, 2000);
+      } else {
+        setAttempts(0);
+      }
     }
   };
 
@@ -283,7 +293,7 @@ export default function Home() {
   };
 
   const handleReveal = () => {
-    if (!currentPlayer) return;
+    if (!currentPlayer || isLocked) return;
     setRevealed(true);
     setAttempts(0); // Reset streak on reveal
     setResult({ type: "error", message: `ANSWER: ${currentPlayer?.name}` });
@@ -487,7 +497,7 @@ export default function Home() {
               <button 
                 key={name} 
                 onClick={() => handleGuess(name)}
-                disabled={revealed || result?.type === "success"}
+                disabled={revealed || result?.type === "success" || isLocked}
               >
                 {name}
               </button>
