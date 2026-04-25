@@ -347,6 +347,47 @@ input::placeholder {
   border-color: var(--accent);
 }
 
+.startup-options button.teammates-btn:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.startup-options button.teammates-btn {
+  border-color: var(--success);
+}
+
+.startup-options button.teammates-btn small {
+  color: var(--success);
+}
+
+.teammate-clues-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.teammate-clue-card {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  color: var(--foreground);
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
+}
+
+.teammate-ask {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 .startup-options button.hard-btn:hover {
   background: rgba(15, 23, 42, 0.02);
 }

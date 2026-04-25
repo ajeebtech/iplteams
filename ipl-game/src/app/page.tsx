@@ -44,17 +44,16 @@ export default function Home() {
   const playersData = useQuery(api.players.getPlayers, { minTeams: 2 });
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [options, setOptions] = useState<string[]>([]);
-  const [isEasyMode, setIsEasyMode] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameMode, setGameMode] = useState<"hard" | "easy" | "teammates" | null>(null);
   const [guess, setGuess] = useState("");
   const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [seenPlayers, setSeenPlayers] = useState<Set<string>>(new Set());
+  const [teammateClues, setTeammateClues] = useState<string[]>([]);
 
-  const startGame = (easy: boolean) => {
-    setIsEasyMode(easy);
-    setGameStarted(true);
+  const startGame = (mode: "hard" | "easy" | "teammates") => {
+    setGameMode(mode);
   };
 
   const generateOptions = useCallback((correctPlayer: Player, allPlayers: Player[]) => {
@@ -77,13 +76,44 @@ export default function Home() {
     setOptions(newOptions);
   }, []);
 
+  const generateTeammateClues = useCallback((target: Player, allPlayers: Player[]) => {
+    const clues: string[] = [];
+    
+    // Group all players by team and year for efficient lookup
+    const squadMap: Record<string, string[]> = {};
+    allPlayers.forEach(p => {
+      p.teams.forEach(t => {
+        t.years.forEach(y => {
+          const key = `${t.team}_${y}`;
+          if (!squadMap[key]) squadMap[key] = [];
+          squadMap[key].push(p.name);
+        });
+      });
+    });
+
+    // For each team stint of the target player, find some teammates
+    target.teams.forEach(t => {
+      // Pick one random year from this team stint
+      const randomYear = t.years[Math.floor(Math.random() * t.years.length)];
+      const key = `${t.team}_${randomYear}`;
+      const teammates = squadMap[key].filter(name => name !== target.name);
+      
+      if (teammates.length > 0) {
+        // Pick 2 random teammates from this year/team
+        const selected = teammates.sort(() => 0.5 - Math.random()).slice(0, 2);
+        clues.push(`In ${randomYear}, he played with ${selected.join(" and ")}.`);
+      }
+    });
+
+    // Return 2-3 distinct clues
+    setTeammateClues(clues.sort(() => 0.5 - Math.random()).slice(0, 3));
+  }, []);
+
   const pickRandomPlayer = useCallback(() => {
     if (!playersData || playersData.length === 0) return;
 
-    // Filter out players already seen in this session
     let pool = playersData.filter(p => !seenPlayers.has(p._id));
     
-    // If all players seen, reset the set
     if (pool.length === 0) {
       setSeenPlayers(new Set());
       pool = [...playersData];
@@ -102,10 +132,14 @@ export default function Home() {
     setResult(null);
     setRevealed(false);
     
-    if (isEasyMode) {
+    if (gameMode === "easy" || gameMode === "teammates") {
       generateOptions(picked, playersData);
     }
-  }, [playersData, isEasyMode, generateOptions, seenPlayers]);
+    
+    if (gameMode === "teammates") {
+      generateTeammateClues(picked, playersData);
+    }
+  }, [playersData, gameMode, generateOptions, generateTeammateClues, seenPlayers]);
 
   useEffect(() => {
     if (playersData && !currentPlayer) {
@@ -113,12 +147,14 @@ export default function Home() {
     }
   }, [playersData, currentPlayer, pickRandomPlayer]);
 
-  // When switching to easy mode, generate options for current player
   useEffect(() => {
-    if (isEasyMode && currentPlayer && playersData) {
+    if ((gameMode === "easy" || gameMode === "teammates") && currentPlayer && playersData) {
       generateOptions(currentPlayer, playersData);
+    } 
+    if (gameMode === "teammates" && currentPlayer && playersData) {
+      generateTeammateClues(currentPlayer, playersData);
     }
-  }, [isEasyMode, currentPlayer, playersData, generateOptions]);
+  }, [gameMode, currentPlayer, playersData, generateOptions, generateTeammateClues]);
 
   const handleGuess = (selectedName: string) => {
     if (!currentPlayer || revealed) return;
@@ -147,52 +183,68 @@ export default function Home() {
   };
 
   if (!playersData) return <main><div className="loading-container"><h1>LOADING PLAYERS...</h1></div></main>;
-  if (!currentPlayer) return <main><div className="loading-container"><h1>INITIALIZING GAME...</h1></div></main>;
 
   return (
-    <main className={!gameStarted ? "no-scroll" : ""}>
-      {!gameStarted && (
+    <main className={!gameMode ? "no-scroll" : ""}>
+      {!gameMode && (
         <div className="startup-overlay">
           <div className="startup-modal">
             <h1>Select Difficulty</h1>
             <div className="startup-options">
-              <button onClick={() => startGame(false)} className="hard-btn">
+              <button onClick={() => startGame("hard")} className="hard-btn">
                 HARD MODE
                 <small>Type the name</small>
               </button>
-              <button onClick={() => startGame(true)} className="easy-btn">
+              <button onClick={() => startGame("easy")} className="easy-btn">
                 EASY MODE
                 <small>4 Options</small>
+              </button>
+              <button onClick={() => startGame("teammates")} className="teammates-btn">
+                TEAMMATES
+                <small>Shared Dressing Room</small>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className={`game-content ${!gameStarted ? "blurred" : ""}`}>
-        {!gameStarted && (
-          <div className="mode-toggle">
-            <button 
-              className={isEasyMode ? "active" : ""} 
-              onClick={() => setIsEasyMode(!isEasyMode)}
-            >
-              {isEasyMode ? "EASY MODE" : "HARD MODE"}
-            </button>
-          </div>
-        )}
+      {!currentPlayer ? (
+        <div className="loading-container"><h1>INITIALIZING GAME...</h1></div>
+      ) : (
+        <div className={`game-content ${!gameMode ? "blurred" : ""}`}>
+          {!gameMode && (
+            <div className="mode-toggle">
+              <button 
+                className={gameMode === "easy" ? "active" : ""} 
+                onClick={() => setGameMode(gameMode === "easy" ? "hard" : "easy")}
+              >
+                {gameMode === "easy" ? "EASY MODE" : "HARD MODE"}
+              </button>
+            </div>
+          )}
 
-      <div className="minimal-game">
-        <header>
-          <h1>Guess the Player</h1>
-          <div className="player-details-clues">
-            {currentPlayer.role && <span>{currentPlayer.role}</span>}
-            {currentPlayer.batting && <span>{currentPlayer.batting}</span>}
-            {currentPlayer.bowling && <span>{currentPlayer.bowling}</span>}
-          </div>
-        </header>
+          <div className="minimal-game">
+            <header>
+              <h1>Guess the Player</h1>
+              <div className="player-details-clues">
+                {currentPlayer.role && <span>{currentPlayer.role}</span>}
+                {currentPlayer.batting && <span>{currentPlayer.batting}</span>}
+                {currentPlayer.bowling && <span>{currentPlayer.bowling}</span>}
+              </div>
+            </header>
 
-        <div className="teams-wrapper">
-          {currentPlayer.teams.map((teamInfo, idx) => {
+        {gameMode === "teammates" ? (
+          <div className="teammate-clues-wrapper">
+            {teammateClues.map((clue, idx) => (
+              <div key={idx} className="teammate-clue-card">
+                {clue}
+              </div>
+            ))}
+            <div className="teammate-ask">Who is this player?</div>
+          </div>
+        ) : (
+          <div className="teams-wrapper">
+            {currentPlayer.teams.map((teamInfo, idx) => {
             const formatYears = (years: string[]) => {
               if (years.length === 0) return "";
               const sorted = [...years].sort((a, b) => parseInt(a) - parseInt(b));
@@ -233,9 +285,10 @@ export default function Home() {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
 
-        {isEasyMode ? (
+        {gameMode === "easy" || gameMode === "teammates" ? (
           <div className="options-grid">
             {options.map((name) => (
               <button 
@@ -277,6 +330,7 @@ export default function Home() {
         <div><span>Streak</span> {attempts}</div>
       </div>
     </div>
+    )}
   </main>
 );
 }
