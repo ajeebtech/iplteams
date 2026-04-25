@@ -11,11 +11,19 @@ type TeamInfo = {
 };
 
 type Player = {
+  _id: string;
   name: string;
   role: string;
   batting: string;
   bowling: string;
   teams: TeamInfo[];
+};
+
+type BattlePlayer = {
+  name: string;
+  score: number;
+  identity: string;
+  ready: boolean;
 };
 
 const TEAM_LOGOS: Record<string, string> = {
@@ -252,8 +260,8 @@ export default function Home() {
   const handleGuess = (selectedName: string) => {
     if (!currentPlayer || revealed) return;
 
-    if (selectedName.trim().toLowerCase() === currentPlayer.name.toLowerCase()) {
-      setResult({ type: "success", message: `CORRECT: ${currentPlayer.name}` });
+    if (selectedName.trim().toLowerCase() === currentPlayer?.name.toLowerCase()) {
+      setResult({ type: "success", message: `CORRECT: ${currentPlayer?.name}` });
       setAttempts((a) => a + 1);
       
       if (gameMode === "battle" && roomId) {
@@ -278,7 +286,7 @@ export default function Home() {
     if (!currentPlayer) return;
     setRevealed(true);
     setAttempts(0); // Reset streak on reveal
-    setResult({ type: "error", message: `ANSWER: ${currentPlayer.name}` });
+    setResult({ type: "error", message: `ANSWER: ${currentPlayer?.name}` });
     setTimeout(pickRandomPlayer, 3000);
   };
 
@@ -341,7 +349,7 @@ export default function Home() {
           <div className="startup-modal">
             <h1>Room: {roomCode}</h1>
             <div className="players-list">
-              {room?.players.map((p, idx) => (
+              {room?.players.map((p: BattlePlayer, idx: number) => (
                 <div key={idx} className="player-entry">
                   <div className="player-info-row">
                     <span>{p.name} {p.identity === identity && "(You)"}</span>
@@ -362,8 +370,8 @@ export default function Home() {
                 <small>GET READY!</small>
               </div>
             ) : room?.players.length === 2 ? (
-              <button onClick={handleToggleReady} className={`easy-btn ${room.players.find(p => p.identity === identity)?.ready ? "ready-active" : ""}`}>
-                {room.players.find(p => p.identity === identity)?.ready ? "CANCEL READY" : "I'M READY!"}
+              <button onClick={handleToggleReady} className={`easy-btn ${room.players.find((p: BattlePlayer) => p.identity === identity)?.ready ? "ready-active" : ""}`}>
+                {room.players.find((p: BattlePlayer) => p.identity === identity)?.ready ? "CANCEL READY" : "I'M READY!"}
               </button>
             ) : (
               <div className="waiting-box">Need 2 players to start</div>
@@ -377,7 +385,7 @@ export default function Home() {
           <div className="startup-modal">
             <h1>Match Over!</h1>
             <div className="results-list">
-              {room?.players.sort((a,b) => b.score - a.score).map((p, idx) => (
+              {room?.players.sort((a: BattlePlayer, b: BattlePlayer) => b.score - a.score).map((p: BattlePlayer, idx: number) => (
                 <div key={idx} className="result-entry">
                   <span>{p.name}</span>
                   <strong>{p.score}</strong>
@@ -399,7 +407,7 @@ export default function Home() {
             <div className="battle-header">
               <div className="timer">{timer}s</div>
               <div className="battle-scores">
-                {room?.players.map((p, idx) => (
+                {room?.players.map((p: BattlePlayer, idx: number) => (
                   <div key={idx} className={`score-badge ${p.identity === identity ? "me" : ""}`}>
                     {p.name}: {p.score}
                   </div>
@@ -412,9 +420,9 @@ export default function Home() {
             <header>
               <h1>Guess the Player</h1>
               <div className="player-details-clues">
-                {currentPlayer.role && <span>{currentPlayer.role}</span>}
-                {currentPlayer.batting && <span>{currentPlayer.batting}</span>}
-                {currentPlayer.bowling && <span>{currentPlayer.bowling}</span>}
+                {currentPlayer?.role && <span>{currentPlayer?.role}</span>}
+                {currentPlayer?.batting && <span>{currentPlayer?.batting}</span>}
+                {currentPlayer?.bowling && <span>{currentPlayer?.bowling}</span>}
               </div>
             </header>
 
@@ -429,7 +437,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="teams-wrapper">
-            {currentPlayer.teams.map((teamInfo, idx) => {
+            {currentPlayer?.teams.map((teamInfo, idx) => {
             const formatYears = (years: string[]) => {
               if (years.length === 0) return "";
               const sorted = [...years].sort((a, b) => parseInt(a) - parseInt(b));
