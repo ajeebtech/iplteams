@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -82,8 +82,12 @@ export default function Home() {
   const [roomId, setRoomId] = useState<Id<"rooms_v2"> | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [identity, setIdentity] = useState("");
+  const [playerName, setPlayerName] = useState("");
+  const [isNameSet, setIsNameSet] = useState(false);
   const [timer, setTimer] = useState(60);
   const [battleIndex, setBattleIndex] = useState(0);
+  const [animations, setAnimations] = useState<{ id: number; value: string; color: string; playerId: string }[]>([]);
+  const prevScores = useRef<Record<string, number>>({});
 
   const [guess, setGuess] = useState("");
   const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -107,6 +111,13 @@ export default function Home() {
     document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
     localStorage.setItem("theme", next ? "dark" : "light");
   };
+
+  useEffect(() => {
+    if (gameMode !== "battle") {
+      setPlayerName("");
+      setIsNameSet(false);
+    }
+  }, [gameMode]);
 
   useEffect(() => {
     let id = sessionStorage.getItem("player_id");
@@ -270,8 +281,26 @@ export default function Home() {
     }
   }, [gameMode, battleState, battleIndex, room, playersData]);
 
+  useEffect(() => {
+    if (room?.players) {
+      room.players.forEach((p: BattlePlayer) => {
+        const prevScore = prevScores.current[p.identity];
+        if (prevScore !== undefined && p.score > prevScore) {
+          const isMe = p.identity === identity;
+          const color = isMe ? "var(--success)" : "var(--error)";
+          const id = Date.now() + Math.random();
+          setAnimations(prev => [...prev, { id, value: "+1", color, playerId: p.identity }]);
+          setTimeout(() => {
+            setAnimations(prev => prev.filter(a => a.id !== id));
+          }, 1000);
+        }
+        prevScores.current[p.identity] = p.score;
+      });
+    }
+  }, [room?.players, identity]);
+
   const handleCreateRoom = async () => {
-    const res = await createRoom({ name: "Player 1", identity });
+    const res = await createRoom({ name: playerName || "Player 1", identity });
     setRoomCode(res.code);
     setRoomId(res.roomId);
     setBattleState("lobby");
@@ -279,7 +308,7 @@ export default function Home() {
 
   const handleJoinRoom = async (code: string) => {
     try {
-      const id = await joinRoom({ code: code.toUpperCase(), name: "Player 2", identity });
+      const id = await joinRoom({ code: code.toUpperCase(), name: playerName || "Player 2", identity });
       setRoomCode(code.toUpperCase());
       setRoomId(id);
       setBattleState("lobby");
@@ -423,22 +452,50 @@ export default function Home() {
         <div className="startup-overlay">
           <div className="startup-modal">
             <h1>1v1 Battle</h1>
-            <div className="startup-options">
-              <button onClick={handleCreateRoom} className="hard-btn">
-                CREATE ROOM
-                <small>Get a code to share</small>
-              </button>
-              <div className="join-box">
+            {!isNameSet ? (
+              <div className="startup-options">
+                <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.5rem" }}>Enter your name to start</p>
                 <input 
                   type="text" 
-                  placeholder="ENTER CODE..." 
+                  placeholder="YOUR NAME..." 
                   className="join-input"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleJoinRoom(e.currentTarget.value);
+                    if (e.key === "Enter" && playerName.trim()) setIsNameSet(true);
                   }}
+                  autoFocus
                 />
+                <button 
+                  onClick={() => setIsNameSet(true)} 
+                  className="easy-btn" 
+                  disabled={!playerName.trim()}
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  CONTINUE
+                </button>
               </div>
-            </div>
+            ) : (
+              <div className="startup-options">
+                <button onClick={handleCreateRoom} className="hard-btn">
+                  CREATE ROOM
+                  <small>Get a code to share</small>
+                </button>
+                <div className="join-box">
+                  <input 
+                    type="text" 
+                    placeholder="ENTER CODE..." 
+                    className="join-input"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleJoinRoom(e.currentTarget.value);
+                    }}
+                  />
+                  <p style={{ fontSize: "0.6rem", color: "var(--muted)", marginTop: "0.5rem", cursor: "pointer" }} onClick={() => setIsNameSet(false)}>
+                    Change name ({playerName})
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -517,6 +574,11 @@ export default function Home() {
                 {room?.players.map((p: BattlePlayer, idx: number) => (
                   <div key={idx} className={`score-badge ${p.identity === identity ? "me" : ""}`}>
                     {p.name}: {p.score}
+                    {animations.filter(a => a.playerId === p.identity).map(a => (
+                      <div key={a.id} className="point-animation" style={{ color: a.color }}>
+                        {a.value}
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
