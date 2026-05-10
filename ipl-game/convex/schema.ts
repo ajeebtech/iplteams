@@ -14,7 +14,11 @@ export default defineSchema({
       })
     ),
     teamCount: v.number(), // Added for easier filtering/sorting
-  }).index("by_teamCount", ["teamCount"]),
+  })
+    .index("by_teamCount", ["teamCount"])
+    .searchIndex("search_name", {
+      searchField: "name",
+    }),
 
   rooms_v2: defineTable({
     code: v.string(),

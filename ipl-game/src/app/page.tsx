@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -68,7 +68,6 @@ const TEAM_LOGOS: Record<string, string> = {
   "Lucknow Super Giants": "https://upload.wikimedia.org/wikipedia/en/thumb/3/34/Lucknow_Super_Giants_Logo.svg/3840px-Lucknow_Super_Giants_Logo.svg.png",
   "Deccan Chargers": "https://upload.wikimedia.org/wikipedia/en/a/a6/HyderabadDeccanChargers.png",
   "Rising Pune Supergiant": "https://upload.wikimedia.org/wikipedia/en/9/9a/Rising_Pune_Supergiant.png",
-  "Rising Pune Supergiants": "https://upload.wikimedia.org/wikipedia/en/9/9a/Rising_Pune_Supergiant.png",
   "Gujarat Lions": "https://upload.wikimedia.org/wikipedia/en/c/c4/Gujarat_Lions.png",
   "Kochi Tuskers Kerala": "https://upload.wikimedia.org/wikipedia/en/thumb/9/96/Kochi_Tuskers_Kerala_Logo.svg/500px-Kochi_Tuskers_Kerala_Logo.svg.png"
 };
@@ -77,8 +76,27 @@ export default function Home() {
   const playersData = useQuery(api.players.getPlayers, { minTeams: 2 });
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [options, setOptions] = useState<string[]>([]);
-  const [gameMode, setGameMode] = useState<"hard" | "easy" | "teammates" | "battle" | null>(null);
+  const [gameMode, setGameMode] = useState<"hard" | "easy" | "teammates" | "battle" | "tictactoe" | null>(null);
   const [battleState, setBattleState] = useState<"entry" | "lobby" | "playing" | "finished" | null>(null);
+  const [ticTacToeState, setTicTacToeState] = useState<{
+    grid: ({ player: string; mark: "X" | "O" } | null)[][];
+    rowTeams: string[];
+    colTeams: string[];
+    turn: "X" | "O";
+    timer: number;
+    winner: "X" | "O" | "draw" | null;
+  }>({
+    grid: Array(3).fill(null).map(() => Array(3).fill(null)),
+    rowTeams: [],
+    colTeams: [],
+    turn: "X",
+    timer: 30,
+    winner: null,
+  });
+  const [searchModal, setSearchModal] = useState<{ open: boolean; row: number; col: number }>({ open: false, row: -1, col: -1 });
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchResults = useQuery(api.players.searchPlayers, { query: searchQuery });
+  const [errorModal, setErrorModal] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   const [roomId, setRoomId] = useState<Id<"rooms_v2"> | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [identity, setIdentity] = useState("");
@@ -128,11 +146,34 @@ export default function Home() {
     setIdentity(id);
   }, []);
 
-  const startGame = (mode: "hard" | "easy" | "teammates" | "battle") => {
+  const startGame = (mode: "hard" | "easy" | "teammates" | "battle" | "tictactoe") => {
     if (mode === "battle") {
       setBattleState("entry");
     }
+    if (mode === "tictactoe") {
+      initializeTicTacToe();
+    }
     setGameMode(mode);
+  };
+
+  const initializeTicTacToe = () => {
+    if (!playersData) return;
+    
+    // Get all unique teams
+    const allTeams = Array.from(new Set(playersData.flatMap(p => p.teams.map(t => t.team))));
+    
+    // Pick 6 random teams
+    const shuffled = [...allTeams].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 6);
+    
+    setTicTacToeState({
+      grid: Array(3).fill(null).map(() => Array(3).fill(null)),
+      rowTeams: selected.slice(0, 3),
+      colTeams: selected.slice(3, 6),
+      turn: "X",
+      timer: 30,
+      winner: null,
+    });
   };
 
   const generateOptions = useCallback((correctPlayer: Player, allPlayers: Player[]) => {
@@ -280,6 +321,64 @@ export default function Home() {
       }
     }
   }, [gameMode, battleState, battleIndex, room, playersData]);
+
+  // Tic Tac Toe Timer
+  useEffect(() => {
+    if (gameMode === "tictactoe" && !ticTacToeState.winner && ticTacToeState.timer > 0) {
+      const interval = setInterval(() => {
+        setTicTacToeState(prev => ({ ...prev, timer: prev.timer - 1 }));
+      }, 1000);
+      return () => clearInterval(interval);
+    } else if (gameMode === "tictactoe" && ticTacToeState.timer === 0 && !ticTacToeState.winner) {
+      // Switch turn on timeout
+      setTicTacToeState(prev => ({
+        ...prev,
+        turn: prev.turn === "X" ? "O" : "X",
+        timer: 30
+      }));
+    }
+  }, [gameMode, ticTacToeState.timer, ticTacToeState.winner]);
+
+  const checkWinner = (grid: ({ player: string; mark: "X" | "O" } | null)[][]) => {
+    // Check rows, cols, diagonals
+    for (let i = 0; i < 3; i++) {
+      if (grid[i][0]?.mark && grid[i][0]?.mark === grid[i][1]?.mark && grid[i][1]?.mark === grid[i][2]?.mark) return grid[i][0]?.mark;
+      if (grid[0][i]?.mark && grid[0][i]?.mark === grid[1][i]?.mark && grid[1][i]?.mark === grid[2][i]?.mark) return grid[0][i]?.mark;
+    }
+    if (grid[0][0]?.mark && grid[0][0]?.mark === grid[1][1]?.mark && grid[1][1]?.mark === grid[2][2]?.mark) return grid[0][0]?.mark;
+    if (grid[0][2]?.mark && grid[0][2]?.mark === grid[1][1]?.mark && grid[1][1]?.mark === grid[2][0]?.mark) return grid[0][2]?.mark;
+    
+    // Check draw
+    if (grid.every(row => row.every(cell => cell !== null))) return "draw";
+    return null;
+  };
+
+  const handleSelectPlayer = (player: any) => {
+    const { row, col } = searchModal;
+    const rowTeam = ticTacToeState.rowTeams[row];
+    const colTeam = ticTacToeState.colTeams[col];
+    
+    const playedForRow = player.teams.some((t: any) => t.team === rowTeam);
+    const playedForCol = player.teams.some((t: any) => t.team === colTeam);
+    
+    if (playedForRow && playedForCol) {
+      const newGrid = [...ticTacToeState.grid.map(r => [...r])];
+      newGrid[row][col] = { player: player.name, mark: ticTacToeState.turn };
+      
+      const winner = checkWinner(newGrid);
+      setTicTacToeState(prev => ({
+        ...prev,
+        grid: newGrid,
+        turn: prev.turn === "X" ? "O" : "X",
+        timer: 30,
+        winner: winner as any
+      }));
+      setSearchModal({ open: false, row: -1, col: -1 });
+      setSearchQuery("");
+    } else {
+      setErrorModal({ open: true, message: `${player.name} did not play for both ${rowTeam} and ${colTeam}` });
+    }
+  };
 
   useEffect(() => {
     if (room?.players) {
@@ -443,6 +542,10 @@ export default function Home() {
                 1V1 BATTLE
                 <small>Real-time Race</small>
               </button>
+              <button onClick={() => startGame("tictactoe")} className="tictactoe-btn">
+                TIC TAC TOE
+                <small>Team Connections</small>
+              </button>
             </div>
           </div>
         </div>
@@ -563,10 +666,139 @@ export default function Home() {
         </div>
       )}
 
-      {!currentPlayer && gameMode !== "battle" ? (
-        <div className="loading-container"><h1>INITIALIZING GAME...</h1></div>
-      ) : (
-        <div className={`game-content ${!gameMode || (gameMode === "battle" && battleState !== "playing") ? "blurred" : ""}`}>
+      {gameMode === "tictactoe" && (
+        <div className="tictactoe-container">
+          <div className="tictactoe-header">
+            <div className={`turn-indicator ${ticTacToeState.turn === "X" ? "x-turn" : "o-turn"}`}>
+              {ticTacToeState.winner ? (
+                ticTacToeState.winner === "draw" ? "DRAW!" : `${ticTacToeState.winner} WINS!`
+              ) : (
+                `${ticTacToeState.turn}'s turn`
+              )}
+            </div>
+            <div className="tic-timer-bar-track">
+              <div 
+                className="tic-timer-bar-fill" 
+                style={{ width: `${(ticTacToeState.timer / 30) * 100}%` }}
+              />
+            </div>
+            <div className="tic-timer-text">{ticTacToeState.timer}s</div>
+          </div>
+
+          <div className="tic-controls">
+            <button onClick={() => setTicTacToeState(prev => ({ ...prev, turn: prev.turn === "X" ? "O" : "X", timer: 30 }))} disabled={!!ticTacToeState.winner}>Skip Turn</button>
+            <button onClick={() => setTicTacToeState(prev => ({ ...prev, winner: "draw" }))} disabled={!!ticTacToeState.winner}>End as Draw</button>
+          </div>
+
+          <div className="tic-grid">
+            {/* Top Left Corner */}
+            <div className="tic-cell corner">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            </div>
+            
+            {/* Column Headers */}
+            {ticTacToeState.colTeams.map((team, i) => (
+              <div key={`col-${i}`} className="tic-cell header-cell col-header">
+                {TEAM_LOGOS[team] && <img src={TEAM_LOGOS[team]} alt="" />}
+                <span>{team}</span>
+              </div>
+            ))}
+
+            {/* Rows */}
+            {[0, 1, 2].map(row => (
+              <React.Fragment key={`row-frag-${row}`}>
+                {/* Row Header */}
+                <div className="tic-cell header-cell row-header">
+                  {TEAM_LOGOS[ticTacToeState.rowTeams[row]] && <img src={TEAM_LOGOS[ticTacToeState.rowTeams[row]]} alt="" />}
+                  <span>{ticTacToeState.rowTeams[row]}</span>
+                </div>
+                
+                {/* Grid Cells */}
+                {[0, 1, 2].map(col => (
+                  <div 
+                    key={`cell-${row}-${col}`} 
+                    className={`tic-cell game-cell ${ticTacToeState.grid[row][col] ? 'filled' : ''}`}
+                    onClick={() => !ticTacToeState.grid[row][col] && !ticTacToeState.winner && setSearchModal({ open: true, row, col })}
+                  >
+                    {ticTacToeState.grid[row][col] ? (
+                      <div className={`mark ${ticTacToeState.grid[row][col]?.mark}`}>
+                        <div className="mark-symbol">{ticTacToeState.grid[row][col]?.mark}</div>
+                        <div className="player-name-small">{ticTacToeState.grid[row][col]?.player}</div>
+                      </div>
+                    ) : (
+                      <div className="choose-btn">
+                        <div className="plus">+</div>
+                        <span>CHOOSE PLAYER</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+
+          <div className="tic-footer">
+            <button onClick={initializeTicTacToe} className="new-game-btn">New Game</button>
+            <button onClick={() => setGameMode(null)} className="leave-btn">Leave</button>
+          </div>
+        </div>
+      )}
+
+      {searchModal.open && (
+        <div className="modal-overlay" onClick={() => setSearchModal({ open: false, row: -1, col: -1 })}>
+          <div className="search-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Select a Player</h2>
+              <p>Played for {ticTacToeState.rowTeams[searchModal.row]} AND {ticTacToeState.colTeams[searchModal.col]}</p>
+            </div>
+            <input 
+              type="text" 
+              placeholder="Search player name..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <div className="search-results">
+              {searchResults === undefined ? (
+                <div className="searching-text">Searching...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="searching-text">{searchQuery.length < 2 ? "Type at least 2 characters" : "No players found"}</div>
+              ) : (
+                searchResults.map(player => (
+                  <button 
+                    key={player._id} 
+                    className="search-result-item"
+                    onClick={() => handleSelectPlayer(player)}
+                  >
+                    <span className="player-name">{player.name}</span>
+                    <span className="player-meta">{player.role} | {player.teams.length} teams</span>
+                  </button>
+                ))
+              )}
+            </div>
+            <button className="close-modal" onClick={() => setSearchModal({ open: false, row: -1, col: -1 })}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {errorModal.open && (
+        <div className="modal-overlay error-overlay" onClick={() => setErrorModal({ open: false, message: "" })}>
+          <div className="error-modal" onClick={e => e.stopPropagation()}>
+            <div className="error-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h3>Invalid Selection</h3>
+            <p>{errorModal.message}</p>
+            <button onClick={() => setErrorModal({ open: false, message: "" })}>GOT IT</button>
+          </div>
+        </div>
+      )}
+
+      {gameMode !== "tictactoe" && (
+        !currentPlayer && gameMode !== "battle" ? (
+          <div className="loading-container"><h1>INITIALIZING GAME...</h1></div>
+        ) : (
+          <div className={`game-content ${!gameMode || (gameMode === "battle" && battleState !== "playing") ? "blurred" : ""}`}>
           {gameMode === "battle" && battleState === "playing" && (
             <div className="battle-header">
               <div className="timer">{timer}s</div>
@@ -694,14 +926,15 @@ export default function Home() {
             Reveal answer
           </div>
         )}
-      </div>
+          </div>
 
-      {gameMode !== "battle" && (
-        <div className="stats-footer">
-          <div><span>Streak</span> {attempts}</div>
+          {gameMode !== "battle" && (
+            <div className="stats-footer">
+              <div><span>Streak</span> {attempts}</div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      )
     )}
   </main>
 );

@@ -14,6 +14,17 @@ export const getPlayers = query({
   },
 });
 
+export const searchPlayers = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    if (args.query.length < 2) return [];
+    return await ctx.db
+      .query("players")
+      .withSearchIndex("search_name", (q) => q.search("name", args.query))
+      .take(10);
+  },
+});
+
 // Seed data from the JSON file (to be called once)
 export const seedPlayers = mutation({
   args: {
@@ -52,5 +63,49 @@ export const seedPlayers = mutation({
         });
       }
     }
+  },
+});
+
+export const normalizeTeams = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const players = await ctx.db.query("players").collect();
+    let updatedCount = 0;
+
+    for (const player of players) {
+      const updatedTeams: Record<string, string[]> = {};
+      let needsUpdate = false;
+
+      for (const teamInfo of player.teams) {
+        let teamName = teamInfo.team;
+        if (teamName === "Rising Pune Supergiants") {
+          teamName = "Rising Pune Supergiant";
+          needsUpdate = true;
+        }
+
+        if (updatedTeams[teamName]) {
+          updatedTeams[teamName] = Array.from(
+            new Set([...updatedTeams[teamName], ...teamInfo.years])
+          ).sort();
+          needsUpdate = true;
+        } else {
+          updatedTeams[teamName] = teamInfo.years;
+        }
+      }
+
+      if (needsUpdate) {
+        const teams = Object.entries(updatedTeams).map(([team, years]) => ({
+          team,
+          years,
+        }));
+        await ctx.db.patch(player._id, {
+          teams,
+          teamCount: teams.length,
+        });
+        updatedCount++;
+      }
+    }
+
+    return { updatedCount };
   },
 });
