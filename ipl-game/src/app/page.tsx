@@ -85,6 +85,7 @@ export default function Home() {
     turn: "X" | "O";
     timer: number;
     winner: "X" | "O" | "draw" | null;
+    size: number;
   }>({
     grid: Array(3).fill(null).map(() => Array(3).fill(null)),
     rowTeams: [],
@@ -92,7 +93,9 @@ export default function Home() {
     turn: "X",
     timer: 30,
     winner: null,
+    size: 3,
   });
+  const [ticTacToeSetup, setTicTacToeSetup] = useState<{ open: boolean } | null>(null);
   const [searchModal, setSearchModal] = useState<{ open: boolean; row: number; col: number }>({ open: false, row: -1, col: -1 });
   const [searchQuery, setSearchQuery] = useState("");
   const searchResults = useQuery(api.players.searchPlayers, { query: searchQuery });
@@ -151,29 +154,33 @@ export default function Home() {
       setBattleState("entry");
     }
     if (mode === "tictactoe") {
-      initializeTicTacToe();
+      setTicTacToeSetup({ open: true });
+      return;
     }
     setGameMode(mode);
   };
 
-  const initializeTicTacToe = () => {
+  const initializeTicTacToe = (size: number = 3) => {
     if (!playersData) return;
     
     // Get all unique teams
     const allTeams = Array.from(new Set(playersData.flatMap(p => p.teams.map(t => t.team))));
     
-    // Pick 6 random teams
+    // Pick size * 2 random teams
     const shuffled = [...allTeams].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 6);
+    const selected = shuffled.slice(0, size * 2);
     
     setTicTacToeState({
-      grid: Array(3).fill(null).map(() => Array(3).fill(null)),
-      rowTeams: selected.slice(0, 3),
-      colTeams: selected.slice(3, 6),
+      grid: Array(size).fill(null).map(() => Array(size).fill(null)),
+      rowTeams: selected.slice(0, size),
+      colTeams: selected.slice(size, size * 2),
       turn: "X",
       timer: 30,
       winner: null,
+      size,
     });
+    setGameMode("tictactoe");
+    setTicTacToeSetup(null);
   };
 
   const generateOptions = useCallback((correctPlayer: Player, allPlayers: Player[]) => {
@@ -340,13 +347,29 @@ export default function Home() {
   }, [gameMode, ticTacToeState.timer, ticTacToeState.winner]);
 
   const checkWinner = (grid: ({ player: string; mark: "X" | "O" } | null)[][]) => {
-    // Check rows, cols, diagonals
-    for (let i = 0; i < 3; i++) {
-      if (grid[i][0]?.mark && grid[i][0]?.mark === grid[i][1]?.mark && grid[i][1]?.mark === grid[i][2]?.mark) return grid[i][0]?.mark;
-      if (grid[0][i]?.mark && grid[0][i]?.mark === grid[1][i]?.mark && grid[1][i]?.mark === grid[2][i]?.mark) return grid[0][i]?.mark;
+    const size = grid.length;
+    
+    // Rows
+    for (let i = 0; i < size; i++) {
+      if (grid[i][0] && grid[i].every(cell => cell?.mark === grid[i][0]?.mark)) {
+        return grid[i][0]?.mark;
+      }
     }
-    if (grid[0][0]?.mark && grid[0][0]?.mark === grid[1][1]?.mark && grid[1][1]?.mark === grid[2][2]?.mark) return grid[0][0]?.mark;
-    if (grid[0][2]?.mark && grid[0][2]?.mark === grid[1][1]?.mark && grid[1][1]?.mark === grid[2][0]?.mark) return grid[0][2]?.mark;
+    
+    // Cols
+    for (let i = 0; i < size; i++) {
+      if (grid[0][i] && grid.every(row => row[i]?.mark === grid[0][i]?.mark)) {
+        return grid[0][i]?.mark;
+      }
+    }
+    
+    // Diagonals
+    if (grid[0][0] && grid.every((row, i) => row[i]?.mark === grid[0][0]?.mark)) {
+      return grid[0][0]?.mark;
+    }
+    if (grid[0][size - 1] && grid.every((row, i) => row[size - 1 - i]?.mark === grid[0][size - 1]?.mark)) {
+      return grid[0][size - 1]?.mark;
+    }
     
     // Check draw
     if (grid.every(row => row.every(cell => cell !== null))) return "draw";
@@ -518,7 +541,7 @@ export default function Home() {
   );
 
   return (
-    <main className={!gameMode ? "no-scroll" : ""}>
+    <main className={`${!gameMode ? "no-scroll" : ""} ${gameMode === "tictactoe" ? "tictactoe-active" : ""}`}>
       <ThemeToggle darkMode={darkMode} onClick={toggleTheme} />
 
       {!gameMode && (
@@ -666,6 +689,30 @@ export default function Home() {
         </div>
       )}
 
+      {ticTacToeSetup?.open && (
+        <div className="startup-overlay">
+          <div className="startup-modal">
+            <h1>Tic Tac Toe</h1>
+            <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Select grid size</p>
+            <div className="startup-options">
+              <button onClick={() => initializeTicTacToe(3)} className="easy-btn">
+                3 x 3
+                <small>Classic</small>
+              </button>
+              <button onClick={() => initializeTicTacToe(4)} className="hard-btn">
+                4 x 4
+                <small>Challenging</small>
+              </button>
+              <button onClick={() => initializeTicTacToe(5)} className="battle-btn">
+                5 x 5
+                <small>Elite</small>
+              </button>
+            </div>
+            <button className="close-modal" style={{ marginTop: "1rem", width: "auto" }} onClick={() => setTicTacToeSetup(null)}>Back to Menu</button>
+          </div>
+        </div>
+      )}
+
       {gameMode === "tictactoe" && (
         <div className="tictactoe-container">
           <div className="tictactoe-header">
@@ -690,7 +737,7 @@ export default function Home() {
             <button onClick={() => setTicTacToeState(prev => ({ ...prev, winner: "draw" }))} disabled={!!ticTacToeState.winner}>End as Draw</button>
           </div>
 
-          <div className="tic-grid">
+          <div className="tic-grid" style={{ gridTemplateColumns: `repeat(${ticTacToeState.size + 1}, 1fr)` }}>
             {/* Top Left Corner */}
             <div className="tic-cell corner">
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
@@ -705,7 +752,7 @@ export default function Home() {
             ))}
 
             {/* Rows */}
-            {[0, 1, 2].map(row => (
+            {Array.from({ length: ticTacToeState.size }).map((_, row) => (
               <React.Fragment key={`row-frag-${row}`}>
                 {/* Row Header */}
                 <div className="tic-cell header-cell row-header">
@@ -714,10 +761,10 @@ export default function Home() {
                 </div>
                 
                 {/* Grid Cells */}
-                {[0, 1, 2].map(col => (
+                {Array.from({ length: ticTacToeState.size }).map((_, col) => (
                   <div 
                     key={`cell-${row}-${col}`} 
-                    className={`tic-cell game-cell ${ticTacToeState.grid[row][col] ? 'filled' : ''}`}
+                    className={`tic-cell game-cell ${ticTacToeState.grid[row][col] ? `filled ${ticTacToeState.grid[row][col]?.mark}` : ""}`}
                     onClick={() => !ticTacToeState.grid[row][col] && !ticTacToeState.winner && setSearchModal({ open: true, row, col })}
                   >
                     {ticTacToeState.grid[row][col] ? (
@@ -728,7 +775,7 @@ export default function Home() {
                     ) : (
                       <div className="choose-btn">
                         <div className="plus">+</div>
-                        <span>CHOOSE PLAYER</span>
+                        <span>CHOOSE</span>
                       </div>
                     )}
                   </div>
@@ -738,7 +785,7 @@ export default function Home() {
           </div>
 
           <div className="tic-footer">
-            <button onClick={initializeTicTacToe} className="new-game-btn">New Game</button>
+            <button onClick={() => setTicTacToeSetup({ open: true })} className="new-game-btn">New Game</button>
             <button onClick={() => setGameMode(null)} className="leave-btn">Leave</button>
           </div>
         </div>
@@ -771,7 +818,7 @@ export default function Home() {
                     onClick={() => handleSelectPlayer(player)}
                   >
                     <span className="player-name">{player.name}</span>
-                    <span className="player-meta">{player.role} | {player.teams.length} teams</span>
+                    <span className="player-meta">{player.role}</span>
                   </button>
                 ))
               )}

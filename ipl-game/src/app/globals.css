@@ -13,6 +13,8 @@
   --subtle-bg: rgba(15, 23, 42, 0.02);
   --subtle-bg-hover: rgba(15, 23, 42, 0.05);
   --placeholder: rgba(15, 23, 42, 0.1);
+  --primary: #0d47a1;
+  --secondary: #ff6f00;
 }
 
 [data-theme="dark"] {
@@ -28,6 +30,8 @@
   --subtle-bg: rgba(226, 232, 240, 0.05);
   --subtle-bg-hover: rgba(226, 232, 240, 0.1);
   --placeholder: rgba(226, 232, 240, 0.15);
+  --primary: #1565c0;
+  --secondary: #ff8f00;
 }
 
 * {
@@ -770,14 +774,30 @@ input::placeholder {
   .teammate-clue-card { padding: 1.25rem; font-size: 1.05rem; }
   .teammate-clues-wrapper { gap: 1rem; margin-bottom: 2rem; }
   .theme-toggle { top: 1rem; right: 1rem; width: 38px; height: 38px; }
+  
+  main.tictactoe-active {
+    padding-top: 1rem;
+    min-height: calc(100vh - 4rem);
+  }
+
+  .tic-controls button {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .turn-indicator {
+    font-size: 1.25rem;
+  }
 }
 
 /* Tic Tac Toe */
 .tictactoe-container {
   width: 100%;
+  max-width: 550px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .tic-cell span {
@@ -792,11 +812,11 @@ input::placeholder {
 
 .tictactoe-header {
   background: var(--card-bg);
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
   border: 1px solid var(--border);
 }
 
@@ -808,8 +828,14 @@ input::placeholder {
   letter-spacing: 1px;
 }
 
-.x-turn { color: var(--primary); }
-.o-turn { color: var(--secondary); }
+.x-turn { 
+  color: var(--error);
+  text-shadow: 0 0 8px rgba(220, 38, 38, 0.2);
+}
+.o-turn { 
+  color: var(--success);
+  text-shadow: 0 0 8px rgba(5, 150, 105, 0.2);
+}
 
 .tic-timer-bar-track {
   height: 8px;
@@ -853,7 +879,6 @@ input::placeholder {
 
 .tic-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   background: var(--border);
   padding: 8px;
@@ -906,17 +931,35 @@ input::placeholder {
 .game-cell {
   cursor: pointer;
   background: var(--card-bg);
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid transparent;
 }
 
 .game-cell:hover:not(.filled) {
   background: var(--subtle-bg-hover);
   transform: scale(1.02);
+  border-color: var(--accent);
 }
 
 .game-cell.filled {
   cursor: default;
   background: var(--subtle-bg);
+  animation: cell-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes cell-pop {
+  0% { transform: scale(0.9); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.game-cell.filled.X {
+  background: var(--error);
+  border-color: var(--error);
+}
+
+.game-cell.filled.O {
+  background: var(--success);
+  border-color: var(--success);
 }
 
 .mark-symbol {
@@ -925,8 +968,25 @@ input::placeholder {
   line-height: 1;
 }
 
-.X .mark-symbol { color: var(--primary); }
-.O .mark-symbol { color: var(--secondary); }
+.X .mark-symbol { 
+  color: var(--error);
+  text-shadow: 0 0 12px rgba(220, 38, 38, 0.3);
+}
+.O .mark-symbol { 
+  color: var(--success);
+  text-shadow: 0 0 12px rgba(5, 150, 105, 0.3);
+}
+
+.filled.X .mark-symbol, 
+.filled.O .mark-symbol { 
+  color: white;
+  text-shadow: none;
+}
+
+.filled.X .player-name-small,
+.filled.O .player-name-small {
+  color: rgba(255, 255, 255, 0.9);
+}
 
 .player-name-small {
   font-size: 0.7rem;
@@ -1194,4 +1254,21 @@ input::placeholder {
   .mark-symbol {
     font-size: 1.5rem;
   }
+}
+
+/* Scaling for larger Tic Tac Toe grids */
+.tic-grid[style*="repeat(5"] .mark-symbol,
+.tic-grid[style*="repeat(6"] .mark-symbol {
+  font-size: 1.25rem;
+}
+
+.tic-grid[style*="repeat(5"] .player-name-small,
+.tic-grid[style*="repeat(6"] .player-name-small {
+  font-size: 0.55rem;
+}
+
+.tic-grid[style*="repeat(5"] .header-cell img,
+.tic-grid[style*="repeat(6"] .header-cell img {
+  width: 24px;
+  height: 24px;
 }
