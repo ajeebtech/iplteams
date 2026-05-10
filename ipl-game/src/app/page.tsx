@@ -96,6 +96,7 @@ export default function Home() {
     size: 3,
   });
   const [ticTacToeSetup, setTicTacToeSetup] = useState<{ open: boolean } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message: string; onConfirm: () => void } | null>(null);
   const [searchModal, setSearchModal] = useState<{ open: boolean; row: number; col: number }>({ open: false, row: -1, col: -1 });
   const [searchQuery, setSearchQuery] = useState("");
   const searchResults = useQuery(api.players.searchPlayers, { query: searchQuery });
@@ -401,6 +402,37 @@ export default function Home() {
     } else {
       setErrorModal({ open: true, message: `${player.name} did not play for both ${rowTeam} and ${colTeam}` });
     }
+  };
+
+  const revealTicTacToeAnswers = () => {
+    if (!playersData) return;
+    
+    const newGrid = [...ticTacToeState.grid.map(r => [...r])];
+    
+    for (let r = 0; r < ticTacToeState.size; r++) {
+      for (let c = 0; c < ticTacToeState.size; c++) {
+        if (!newGrid[r][c]) {
+          const rowTeam = ticTacToeState.rowTeams[r];
+          const colTeam = ticTacToeState.colTeams[c];
+          
+          const validPlayer = playersData.find(p => 
+            p.teams.some(t => t.team === rowTeam) && 
+            p.teams.some(t => t.team === colTeam)
+          );
+          
+          if (validPlayer) {
+            newGrid[r][c] = { player: validPlayer.name, mark: "X" as any };
+          }
+        }
+      }
+    }
+    
+    setTicTacToeState(prev => ({
+      ...prev,
+      grid: newGrid,
+      winner: "draw"
+    }));
+    setConfirmModal(null);
   };
 
   useEffect(() => {
@@ -735,6 +767,11 @@ export default function Home() {
           <div className="tic-controls">
             <button onClick={() => setTicTacToeState(prev => ({ ...prev, turn: prev.turn === "X" ? "O" : "X", timer: 30 }))} disabled={!!ticTacToeState.winner}>Skip Turn</button>
             <button onClick={() => setTicTacToeState(prev => ({ ...prev, winner: "draw" }))} disabled={!!ticTacToeState.winner}>End as Draw</button>
+            <button onClick={() => setConfirmModal({ 
+              open: true, 
+              message: "Are you sure you want to reveal all answers? This will end the game.", 
+              onConfirm: revealTicTacToeAnswers 
+            })} disabled={!!ticTacToeState.winner}>Reveal All</button>
           </div>
 
           <div className="tic-grid" style={{ gridTemplateColumns: `repeat(${ticTacToeState.size + 1}, 1fr)` }}>
@@ -837,6 +874,22 @@ export default function Home() {
             <h3>Invalid Selection</h3>
             <p>{errorModal.message}</p>
             <button onClick={() => setErrorModal({ open: false, message: "" })}>GOT IT</button>
+          </div>
+        </div>
+      )}
+
+      {confirmModal?.open && (
+        <div className="modal-overlay" onClick={() => setConfirmModal(null)}>
+          <div className="error-modal" onClick={e => e.stopPropagation()}>
+            <div className="error-icon" style={{ background: "rgba(217, 119, 6, 0.1)", color: "var(--accent)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h3>Reveal Answers?</h3>
+            <p>{confirmModal.message}</p>
+            <div style={{ display: "flex", gap: "1rem", width: "100%" }}>
+              <button style={{ background: "var(--border)", color: "var(--foreground)" }} onClick={() => setConfirmModal(null)}>CANCEL</button>
+              <button onClick={confirmModal.onConfirm}>YES, REVEAL</button>
+            </div>
           </div>
         </div>
       )}

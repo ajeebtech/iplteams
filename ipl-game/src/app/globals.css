@@ -1254,6 +1254,18 @@ input::placeholder {
   .mark-symbol {
     font-size: 1.5rem;
   }
+  .tic-controls {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .tic-controls button {
+    font-size: 0.75rem;
+    padding: 0.6rem;
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+  .tic-controls button:last-child {
+    flex: 1 1 100%;
+  }
 }
 
 /* Scaling for larger Tic Tac Toe grids */
